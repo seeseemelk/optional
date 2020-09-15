@@ -160,12 +160,12 @@ import std.range, std.traits;
         nm = other;
         assert(sm == nm);
 
-        static assert( __traits(compiles, { nm = other; }));
-        static assert(!__traits(compiles, { ni = other; }));
-        static assert(!__traits(compiles, { nc = other; }));
-        static assert( __traits(compiles, { sm = other; }));
-        static assert(!__traits(compiles, { si = other; }));
-        static assert(!__traits(compiles, { sc = other; }));
+        static assert( __traits(compiles, nm = other));
+        static assert(!__traits(compiles, ni = other));
+        static assert(!__traits(compiles, nc = other));
+        static assert( __traits(compiles, sm = other));
+        static assert(!__traits(compiles, si = other));
+        static assert(!__traits(compiles, sc = other));
     }}
 }
 
