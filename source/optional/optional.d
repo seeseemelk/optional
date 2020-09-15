@@ -4,6 +4,7 @@
 module optional.optional;
 
 import std.typecons: Nullable;
+import std.traits: isCopyable;
 import bolts.from;
 
 package struct None {}
@@ -48,8 +49,44 @@ private static string autoReturn(string expression)() {
     and safe.
 */
 
+version(GNU) {
+	/**
+	Backport of Phobos `std.functional.forward` template, as the current version
+	of GDC still ships with an older version that is currently incompatible with
+	the Optional library.
+	*/
+	private template forward(args...)
+	{
+	    static if (args.length)
+	    {
+	        import std.algorithm.mutation : move;
+
+	        alias arg = args[0];
+	        // by ref || lazy || const/immutable
+	        static if (__traits(isRef,  arg) ||
+	                   __traits(isOut,  arg) ||
+	                   __traits(isLazy, arg) ||
+	                   !is(typeof(move(arg))))
+	            alias fwd = arg;
+	        // (r)value
+	        else
+	            @property auto fwd(){ return move(arg); }
+
+	        static if (args.length == 1)
+	            alias forward = fwd;
+	        else
+	            alias forward = AliasSeq!(fwd, forward!(args[1..$]));
+	    }
+	    else
+	        alias forward = AliasSeq!();
+	}
+}
+
 struct Optional(T) {
     import std.traits: isMutable, isSomeFunction, isAssignable, isPointer, isArray;
+
+	//pragma(msg, __traits(allMembers, Optional!int));
+	//static assert(isCopyable!T, "Optionals with non-copyable types are not supported in GDC");
 
     private enum isNullInvalid = is(T == class) || is(T == interface) || isSomeFunction!T || isPointer!T;
 
@@ -71,9 +108,7 @@ struct Optional(T) {
         sets the optional to `none` interally
     */
     this(T value) pure {
-        import std.traits: isCopyable;
         static if (!isCopyable!T) {
-            import std.functional: forward;
             this._value = forward!value;
         } else {
             this._value = value;
@@ -284,7 +319,7 @@ struct Optional(T) {
     Type constructor for an optional having some value of `T`
 */
 public auto some(T)(auto ref T value) {
-    import std.traits: isMutable, isCopyable;
+    import std.traits: isMutable;
     static if (!isCopyable!T) {
         import std.functional: forward;
         return Optional!T(forward!value);
